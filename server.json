@@ -1,0 +1,12 @@
+{
+  "server1":{
+    "host": "ssh5.vast.ai",
+    "user": "root",
+    "port": 16170
+  },
+  "server2":{
+    "host": "ssh4.vast.ai",
+    "user": "root",
+    "port": 16174
+  }
+}

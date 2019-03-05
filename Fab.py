@@ -24,6 +24,11 @@ def _startConnection(host, user, port, password=None):
 
 def _initialize():
     # c.run('pkill -f ')
+    c.run('pip install tensorflow --user')
+    c.run('echo "import tensorflow\nses=tensorflow.Session()\nimport time\ntime.sleep(1)\nses.close()" > test.py')
+    test_result = c.run('python3 test.py')
+    print(test_result.exited)
+    print(test_result.ok)
     c.run('pip install jupyter notebook')
     c.run('apt install screen htop vim net-tools -y')
     c.run('apt install cmake libncurses5-dev libncursesw5-dev git -y;'
@@ -69,12 +74,21 @@ def _run_jupyter(username, password, host, port):
 
 users = []
 server_info = {}
+# servers = []
 
 if __name__ == '__main__':
     f = open("user_pass.txt", 'w+')
+    server_file = open("server.json")
+
+    servers = json.load(server_file)
     # f.write("try:\n")
     count = 0
-    for host, user, port in [('ssh4.vast.ai', 'root', 16172), ('ssh4.vast.ai', 'root', 16174),]:
+    # for host, user, port in [('ssh4.vast.ai', 'root', 16172), ('ssh4.vast.ai', 'root', 16174), ]:
+    for key in servers:
+        item = servers[key]
+        host = item['host']
+        user = item['user']
+        port = item['port']
         count += 1
         server_name = 'server' + str(count)
         server_info[server_name] = {}
