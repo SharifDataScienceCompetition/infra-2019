@@ -40,7 +40,6 @@ def _create_user(c):
     username: str = id_generator(10)
     password = id_generator()
     users.append(User(username, password))
-    f.write(username + " " + password + "\n")
     # sudoPass = Responder(pattern=r'\[sudo\] password:', response=password + '\n', )
     c.run('adduser --disabled-password --force-badname --gecos "" ' + username)
     c.run('echo "{username}:{password}" | chpasswd'.format(
@@ -58,24 +57,24 @@ def _ssh_config(c):
 def _run_jupyter(username, password, host, port):
     c = Connection(username + '@' + host + ':' + str(port),
                    connect_kwargs={"password": password})
-    jup_port = random.randint(500, 6500)
+    jup_port = random.randint(10000, 60000)
     c.run('nohup jupyter notebook --ip=0.0.0.0 --port='
-          + jup_port
-          + '--NotebookApp.token=\'\' '
+          + str(jup_port)
+          + ' --NotebookApp.token=\'\' '
             '--NotebookApp.password=\'\' '
             '0<&- &> '
             'my.admin.log.file &')
     return jup_port
 
+
 users = []
 server_info = {}
 
 if __name__ == '__main__':
-    f = open("user_pass.txt", 'a+')
+    f = open("user_pass.txt", 'w+')
     # f.write("try:\n")
     count = 0
-    for host, user, port in [('ssh5.vast.ai', 'root', 16084), ('ssh4.vast.ai', 'root', 16092),
-                             ('ssh5.vast.ai', 'root', 16093), ]:
+    for host, user, port in [('ssh4.vast.ai', 'root', 16172), ('ssh4.vast.ai', 'root', 16174),]:
         count += 1
         server_name = 'server' + str(count)
         server_info[server_name] = {}
@@ -90,11 +89,9 @@ if __name__ == '__main__':
             user_username, user_password = _create_user(c)
             _ssh_config(c)
             jup_port = _run_jupyter(user_username, user_password, host, port)
-            server_info[server_name]['users'].append({'username': user_username, 'password': user_password, 'port': jup_port})
-        # c.run('echo -e "PasswordAuthentication yes\n$(cat /etc/ssh/sshd_config)" > "/etc/ssh/sshd_config"')
-        # c.run('service ssh reload')
+            server_info[server_name]['users'].append(
+                {'username': user_username, 'password': user_password, 'port': jup_port})
         c.close()
-        # _run_jupyter(users[len(users) - 1].username, users[len(users) - 1].password, host, port)
 
     json_data = json.dumps(server_info)
     f.write(json_data)
