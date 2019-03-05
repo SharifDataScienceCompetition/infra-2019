@@ -1,10 +1,10 @@
+#!/usr/bin/python
 import json
-import pty
 import random
 import string
+import sys
 
 from fabric import Connection
-from invoke import Responder
 
 
 class User:
@@ -22,8 +22,7 @@ def _startConnection(host, user, port, password=None):
     return c
 
 
-def _initialize():
-    # c.run('pkill -f ')
+def _initialize(c):
     c.run('pip install tensorflow --user')
     c.run('echo "import tensorflow\nses=tensorflow.Session()\nimport time\ntime.sleep(1)\nses.close()" > test.py')
     test_result = c.run('python3 test.py')
@@ -45,7 +44,6 @@ def _create_user(c):
     username: str = id_generator(10)
     password = id_generator()
     users.append(User(username, password))
-    # sudoPass = Responder(pattern=r'\[sudo\] password:', response=password + '\n', )
     c.run('adduser --disabled-password --force-badname --gecos "" ' + username)
     c.run('echo "{username}:{password}" | chpasswd'.format(
         username=username,
@@ -59,7 +57,7 @@ def _ssh_config(c):
     c.run('service ssh reload')
 
 
-def _run_jupyter(username, password, host, port):
+def _run_jupyter(c, username, password, host, port):
     c = Connection(username + '@' + host + ':' + str(port),
                    connect_kwargs={"password": password})
     jup_port = random.randint(10000, 60000)
@@ -74,27 +72,28 @@ def _run_jupyter(username, password, host, port):
 
 users = []
 server_info = {}
-# servers = []
+servers = []
 
-if __name__ == '__main__':
-    f = open("user_pass.txt", 'w+')
+
+def main(server_info_path):
+    f = open(server_info_path, 'w+')
     server_file = open("server.json")
-
-    servers = json.load(server_file)
-    # f.write("try:\n")
+    # servers = json.load(server_file)
     count = 0
-    # for host, user, port in [('ssh4.vast.ai', 'root', 16172), ('ssh4.vast.ai', 'root', 16174), ]:
-    for key in servers:
-        item = servers[key]
-        host = item['host']
-        user = item['user']
-        port = item['port']
+    for host, port in servers:
+        user = 'root'
+        # for host, user, port in [('ssh4.vast.ai', 'root', 16172), ('ssh4.vast.ai', 'root', 16174), ]:
+        # for key in servers:
+        #     item = servers[key]
+        #     host = item['host']
+        #     user = item['user']
+        #     port = item['port']
         count += 1
         server_name = 'server' + str(count)
         server_info[server_name] = {}
 
         c = _startConnection(host=host, user=user, port=port)
-        _initialize()
+        _initialize(c)
         server_info[server_name]['port'] = port
         server_info[server_name]['root_user'] = user
         server_info[server_name]['host'] = host
@@ -102,7 +101,7 @@ if __name__ == '__main__':
         for i in range(0, 2):
             user_username, user_password = _create_user(c)
             _ssh_config(c)
-            jup_port = _run_jupyter(user_username, user_password, host, port)
+            jup_port = _run_jupyter(c, user_username, user_password, host, port)
             server_info[server_name]['users'].append(
                 {'username': user_username, 'password': user_password, 'port': jup_port})
         c.close()
@@ -110,3 +109,29 @@ if __name__ == '__main__':
     json_data = json.dumps(server_info)
     f.write(json_data)
     f.close()
+
+
+if __name__ == '__main__':
+    args = sys.argv
+    if '-all' in args:
+        f = open(args[2], 'r')
+        server_info_path = args[3]
+        line = f.readline()
+        while line:
+            pars = line.split()
+            servers.append((pars[3].split('@')[1], pars[2],))
+            line = f.readline()
+    elif '-help' in args:
+        print('''
+        -help
+        -all [remote_host_file] [added_users_file]
+        [remote_host remote_port ...] [added_users_file]
+        ''')
+        exit(0)
+    else:
+        key = 1
+        while key < len(args) - 1:
+            servers.append((args[key], args[key + 1]))
+            key += 2
+        server_info_path = args[len(args) - 1]
+    main(server_info_path)
