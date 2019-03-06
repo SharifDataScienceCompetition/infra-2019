@@ -121,17 +121,17 @@ if __name__ == '__main__':
             pars = line.split()
             servers.append((pars[3].split('@')[1], pars[2],))
             line = f.readline()
-    elif '-help' in args:
+    elif len(args) == 3:
+        key = 1
+        while key < len(args) - 1:
+            servers.append((args[key], args[key + 1]))
+            key += 2
+        server_info_path = args[len(args) - 1]
+    else:                                                                    
         print('''
         -help
         -all [remote_host_file] [added_users_file]
         [remote_host remote_port ...] [added_users_file]
         ''')
         exit(0)
-    else:
-        key = 1
-        while key < len(args) - 1:
-            servers.append((args[key], args[key + 1]))
-            key += 2
-        server_info_path = args[len(args) - 1]
     main(server_info_path)
